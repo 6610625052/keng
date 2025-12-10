@@ -55,7 +55,12 @@ except FileNotFoundError:
 # Class สำหรับอ่านกล้องแบบไม่หน่วง (Threading)
 class CameraStream:
     def __init__(self, src=0):
-        self.stream = cv2.VideoCapture(src)
+        # เพิ่ม cv2.CAP_FFMPEG เพื่อบังคับ backend (อาจช่วยได้ในบางเคส)
+        self.stream = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
+        
+        # ลด Buffer size ของตัว OpenCV เองให้เหลือน้อยที่สุด
+        self.stream.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        
         if not self.stream.isOpened():
             print("❌ Cannot open camera source!")
             self.stopped = True
@@ -71,7 +76,13 @@ class CameraStream:
         while True:
             if self.stopped:
                 return
-            (self.grabbed, self.frame) = self.stream.read()
+            
+            # ท่าไม้ตาย: อ่านแบบ grab() เพื่อเคลียร์ buffer ทิ้งตลอดเวลา
+            # ไม่ว่า buffer จะค้างกี่ภาพ เราจะข้ามไปเอาภาพล่าสุดเสมอ
+            self.stream.grab() 
+            
+            # แล้วค่อย decode ภาพจริงออกมา
+            (self.grabbed, self.frame) = self.stream.retrieve()
 
     def read(self):
         return self.frame
